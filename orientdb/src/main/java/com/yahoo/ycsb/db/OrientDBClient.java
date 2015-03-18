@@ -24,6 +24,7 @@ import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.StringByteIterator;
+import com.orientechnologies.orient.core.record.ORecord;
 
 /**
  * OrientDB client for YCSB framework.
@@ -42,7 +43,7 @@ public class OrientDBClient extends DB {
 
   private ODatabaseDocumentTx             db;
   private static final String             CLASS = "usertable";
-  private ODictionary<ORecordInternal<?>> dictionary;
+  private ODictionary<ORecord> dictionary;
 
   /**
    * Initialize any state for this DB. Called once per DB instance; there is one DB instance per client thread.
@@ -61,17 +62,7 @@ public class OrientDBClient extends DB {
 
       OGlobalConfiguration.STORAGE_KEEP_OPEN.setValue(false);
       db = new ODatabaseDocumentTx(url);
-      if (db.exists()) {
-        db.open(user, password);
-        if (newdb) {
-          System.out.println("OrientDB drop and recreate fresh db");
-          db.drop();
-          db.create();
-        }
-      } else {
-        System.out.println("OrientDB database not found, create fresh db");
-        db.create();
-      }
+      db.open(user, password);
 
       System.out.println("OrientDB connection created with " + url);
 
@@ -205,20 +196,43 @@ public class OrientDBClient extends DB {
    * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
    */
   public int scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
-    try {
-      final Collection<ODocument> documents = dictionary.getIndex().getEntriesMajor(startkey, true, recordcount);
-      for (ODocument document : documents) {
-        final HashMap<String, ByteIterator> entry = new HashMap<String, ByteIterator>(fields.size());
-        result.add(entry);
+     try  {
+		   
+			int counter=1;
+			Set<Object> setKeys = dictionary.getIndex().cursor().toKeys();
+			Set<String> setFilteredKeys = new LinkedHashSet<String>();
+			for (Object o : setKeys) {
+				if (counter > recordcount) {
+					break;
+			  } else if (startkey.compareTo(o.toString()) <= 0) {
+					setFilteredKeys.add(o.toString());
+					counter++;
+			  }
+			}
+			
+			String iName = dictionary.getIndex().getName();
+			OIndexDefinition iIndexDefinition = dictionary.getIndex().getDefinition();
+			String iWrappedType = dictionary.getIndex().getType();
+			ORID iRid = dictionary.getIndex().getIdentity();
+			ODocument iConfiguration = dictionary.getIndex().getConfiguration();
+			Set<String> clustersToIndex = dictionary.getIndex().getClusters();
+			OIndexRemote<Collection<OIdentifiable>> or = new OIndexRemoteMultiValue(iName,iWrappedType,iRid,iIndexDefinition,iConfiguration,clustersToIndex);
+			Collection<ODocument> documents = or.getEntries(setFilteredKeys);
+			for (ODocument document : documents) {
+				ODocument odoc = (ODocument) document.field("rid");
+				final HashMap<String, ByteIterator> entry = new HashMap<String, ByteIterator>(fields.size());
+				result.add(entry);
 
-        for (String field : fields)
-          entry.put(field, new StringByteIterator((String) document.field(field)));
-      }
+				for (String field : fields)
+					entry.put(field, new StringByteIterator((String) odoc.field(field)));
+			}
 
-      return 0;
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    return 1;
-  }
+					return 0;
+			  } catch (Exception e) {
+					e.printStackTrace();
+				}
+				return 1;
+			
+	}
+
 }
