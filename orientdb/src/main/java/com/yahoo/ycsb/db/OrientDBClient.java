@@ -198,40 +198,40 @@ public class OrientDBClient extends DB {
   public int scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
      try  {
 		   
-			int counter=1;
-			Set<Object> setKeys = dictionary.getIndex().cursor().toKeys();
-			Set<String> setFilteredKeys = new LinkedHashSet<String>();
-			for (Object o : setKeys) {
-				if (counter > recordcount) {
-					break;
-			  } else if (startkey.compareTo(o.toString()) <= 0) {
-					setFilteredKeys.add(o.toString());
-					counter++;
-			  }
+	int counter=1;
+	Set<Object> setKeys = dictionary.getIndex().cursor().toKeys();
+	Set<String> setFilteredKeys = new LinkedHashSet<String>();
+	for (Object o : setKeys) {
+		if (counter > recordcount) {
+			break;
+		 } else if (startkey.compareTo(o.toString()) <= 0) {
+			setFilteredKeys.add(o.toString());
+			counter++;
 			}
+		}
 			
-			String iName = dictionary.getIndex().getName();
-			OIndexDefinition iIndexDefinition = dictionary.getIndex().getDefinition();
-			String iWrappedType = dictionary.getIndex().getType();
-			ORID iRid = dictionary.getIndex().getIdentity();
-			ODocument iConfiguration = dictionary.getIndex().getConfiguration();
-			Set<String> clustersToIndex = dictionary.getIndex().getClusters();
-			OIndexRemote<Collection<OIdentifiable>> or = new OIndexRemoteMultiValue(iName,iWrappedType,iRid,iIndexDefinition,iConfiguration,clustersToIndex);
-			Collection<ODocument> documents = or.getEntries(setFilteredKeys);
-			for (ODocument document : documents) {
-				ODocument odoc = (ODocument) document.field("rid");
-				final HashMap<String, ByteIterator> entry = new HashMap<String, ByteIterator>(fields.size());
-				result.add(entry);
+	String iName = dictionary.getIndex().getName();
+	OIndexDefinition iIndexDefinition = dictionary.getIndex().getDefinition();
+	String iWrappedType = dictionary.getIndex().getType();
+	ORID iRid = dictionary.getIndex().getIdentity();
+	ODocument iConfiguration = dictionary.getIndex().getConfiguration();
+	Set<String> clustersToIndex = dictionary.getIndex().getClusters();
+	OIndexRemote<Collection<OIdentifiable>> or = new OIndexRemoteMultiValue(iName,iWrappedType,iRid,iIndexDefinition,iConfiguration,clustersToIndex);
+	Collection<ODocument> documents = or.getEntries(setFilteredKeys);
+	for (ODocument document : documents) {
+		ODocument odoc = (ODocument) document.field("rid");
+		final HashMap<String, ByteIterator> entry = new HashMap<String, ByteIterator>(fields.size());
+		result.add(entry);
 
-				for (String field : fields)
-					entry.put(field, new StringByteIterator((String) odoc.field(field)));
-			}
+		for (String field : fields)
+			entry.put(field, new StringByteIterator((String) odoc.field(field)));
+		}
 
-					return 0;
-			  } catch (Exception e) {
-					e.printStackTrace();
-				}
-				return 1;
+		return 0;
+	} catch (Exception e) {
+		e.printStackTrace();
+		}
+	return 1;
 			
 	}
 
